@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../domain/voice_state.dart';
 import '../data/audio_recorder_service.dart';
 import '../data/mlkit_speech_service.dart';
@@ -11,9 +12,13 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   final MlkitSpeechService _mlkitSpeechService;
   StreamSubscription? _amplitudeSubscription;
   StreamSubscription? _textSubscription;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   VoiceNotifier(this._mlkitSpeechService)
       : super(VoiceState(status: VoiceStatus.idle)) {
+    _audioPlayer.onPlayerComplete.listen((event) {
+      state = state.copyWith(isPlaying: false);
+    });
     _initMlkit('en-US'); // Default to English
   }
 
@@ -29,8 +34,10 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
         // Assume download finishes and is now ready. 
         // In a real scenario, we might poll or listen to a progress stream.
         state = state.copyWith(status: VoiceStatus.idle, isModelReady: true);
+        startRecording(); // <--- Auto-start
       } else if (status == MlkitModelStatus.available) {
         state = state.copyWith(status: VoiceStatus.idle, isModelReady: true);
+        startRecording(); // <--- Auto-start
       } else {
         state = state.copyWith(
             status: VoiceStatus.error,
@@ -54,6 +61,9 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
           errorMessage: 'Microphone permission denied.');
       return;
     }
+
+    // Require notification permission to show keyword notifications and Foreground Service icon seamlessly
+    await Permission.notification.request();
 
     if (!state.isModelReady) {
       state = state.copyWith(
@@ -102,11 +112,12 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       debugPrint("Failed to stop ML Kit: $e");
     }
 
-    // ML Kit owns the mic — no local audio file is produced.
-    // The transcript captured via the EventChannel stream is the output.
+    // Attempt to pull the automatically cached WA file from native OS layers
+    final savedAudioPath = await _mlkitSpeechService.getSavedAudioPath();
+
     state = state.copyWith(
       status: VoiceStatus.idle,
-      audioPath: null,
+      audioPath: savedAudioPath,
       transcript: state.transcript?.isNotEmpty == true
           ? state.transcript
           : 'No speech detected.',
@@ -123,14 +134,22 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   Future<void> togglePlayback() async {
-    // Playback not available when using ML Kit mic capture.
-    // audioPath is null in this mode.
+    if (state.audioPath == null) return;
+
+    if (state.isPlaying) {
+      await _audioPlayer.stop();
+      state = state.copyWith(isPlaying: false);
+    } else {
+      await _audioPlayer.play(DeviceFileSource(state.audioPath!));
+      state = state.copyWith(isPlaying: true);
+    }
   }
 
   @override
   void dispose() {
     _amplitudeSubscription?.cancel();
     _textSubscription?.cancel();
+    _audioPlayer.dispose();
     super.dispose();
   }
 }

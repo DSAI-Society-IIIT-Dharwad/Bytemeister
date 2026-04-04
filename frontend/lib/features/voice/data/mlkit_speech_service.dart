@@ -65,4 +65,13 @@ class MlkitSpeechService {
   Stream<String> get textStream {
     return eventChannel.receiveBroadcastStream().cast<String>();
   }
+
+  Future<String?> getSavedAudioPath() async {
+    try {
+      return await methodChannel.invokeMethod<String>('getSavedAudioPath');
+    } on PlatformException catch (_) {
+      // Intentionally handling the "NO_AUDIO" exception thrown by MainActivity internally
+      return null;
+    }
+  }
 }

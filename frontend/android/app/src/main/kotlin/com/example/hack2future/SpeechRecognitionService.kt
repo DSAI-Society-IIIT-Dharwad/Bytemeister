@@ -8,6 +8,12 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.os.Build
+import android.os.IBinder
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.mlkit.genai.common.DownloadStatus
@@ -25,6 +31,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
 
 class SpeechRecognitionService : Service() {
@@ -37,7 +46,16 @@ class SpeechRecognitionService : Service() {
     private var speechRecognizer: SpeechRecognizer? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
     private var recognitionJob: Job? = null
+    private var audioRecordJob: Job? = null
     private var downloadJob: Job? = null
+
+    @Volatile
+    private var isRecording = false
+
+    private var audioRecord: AudioRecord? = null
+
+    // Tracking the saved audio file
+    var lastSavedAudioPath: String? = null
 
     // Callbacks to communicate with MainActivity
     var onPartialText: ((String) -> Unit)? = null
@@ -121,10 +139,52 @@ class SpeechRecognitionService : Service() {
 
     fun startRecognition() {
         recognitionJob?.cancel()
+        audioRecordJob?.cancel()
+        
+        isRecording = true
+        val sampleRate = 16000
+        val bufferSize = AudioRecord.getMinBufferSize(
+            sampleRate,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        ) * 2
+
+        try {
+            audioRecord = AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                sampleRate,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                bufferSize
+            )
+        } catch (e: SecurityException) {
+            onError?.invoke("Microphone permission required", e.message)
+            return
+        }
+
+        if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+            onError?.invoke("AudioRecord init failed", "Microphone in use?")
+            return
+        }
+
+        // Setup Parcel pipes
+        val pipe = ParcelFileDescriptor.createPipe()
+        val readPfd = pipe[0]
+        val writePfd = pipe[1]
+
+        // Prepare local WAV cache file
+        val ts = System.currentTimeMillis()
+        val wavFile = File(cacheDir, "recording_$ts.wav")
+        lastSavedAudioPath = wavFile.absolutePath
+        
+        // Write the empty 44-byte WAV header first to reserve space
+        WavUtil.writePlaceholderHeader(wavFile)
+
+        // Launch the internal ML Kit parser pipeline
         recognitionJob = coroutineScope.launch {
             try {
                 val request = speechRecognizerRequest {
-                    audioSource = AudioSource.fromMic()
+                    audioSource = AudioSource.fromPfd(readPfd)
                 }
 
                 speechRecognizer?.startRecognition(request)?.collect { response ->
@@ -139,6 +199,7 @@ class SpeechRecognitionService : Service() {
                         }
                         is SpeechRecognizerResponse.CompletedResponse -> {
                             // Session completed
+                            Log.d(TAG, "ML Kit Session Completed")
                         }
                         is SpeechRecognizerResponse.ErrorResponse -> {
                             onError?.invoke(response.e.message ?: "Unknown Error", response.e.errorCode?.toString())
@@ -151,19 +212,65 @@ class SpeechRecognitionService : Service() {
                 onError?.invoke("Recognition exception", e.message)
             }
         }
+
+        // Launch the Tee byte-pump (Reads Mic -> Pumps File & Pipe)
+        audioRecordJob = coroutineScope.launch(Dispatchers.IO) {
+            val audioBuffer = ByteArray(bufferSize)
+            audioRecord?.startRecording()
+
+            FileOutputStream(writePfd.fileDescriptor).use { pipeOut ->
+                // File output must start AFTER the 44-byte header! We already wrote it,
+                // so we open in append mode, or RandomAccessFile.
+                FileOutputStream(wavFile, true).use { fileOut ->
+                    while (isRecording) {
+                        val readData = audioRecord?.read(audioBuffer, 0, bufferSize) ?: 0
+                        if (readData > 0) {
+                            try {
+                                // 1. Tee to ML Kit
+                                pipeOut.write(audioBuffer, 0, readData)
+                                // 2. Tee to Disk
+                                fileOut.write(audioBuffer, 0, readData)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Pipe or File closed unexpectedly", e)
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Cleanup when `isRecording` loop breaks natively
+            audioRecord?.stop()
+            audioRecord?.release()
+            audioRecord = null
+            
+            readPfd.close()
+            writePfd.close()
+
+            // Finalize standard WAV header
+            Log.d(TAG, "Finalizing WAV locally at ${wavFile.absolutePath}")
+            WavUtil.finalizeWavFile(wavFile)
+        }
     }
 
     fun stopRecognition() {
-        recognitionJob?.cancel()
+        Log.d(TAG, "stopRecognition called natively")
+        isRecording = false // Breaks the AudioRecord pump
         coroutineScope.launch {
-            speechRecognizer?.stopRecognition()
+            try {
+                speechRecognizer?.stopRecognition()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping recognizer early", e)
+            }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        isRecording = false
         Log.d(TAG, "onDestroy: Service destroyed")
         coroutineScope.cancel()
+        audioRecord?.release()
         speechRecognizer?.close()
         speechRecognizer = null
     }

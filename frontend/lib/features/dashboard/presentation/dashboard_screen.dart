@@ -95,7 +95,7 @@ class DashboardScreen extends ConsumerWidget {
                   _StatCard(
                     label: 'Total',
                     value: filteredInteractions.length.toString(),
-                    color: AppColors.textPrimary,
+                    color: colorScheme.primary,
                   ),
                   const SizedBox(width: 12),
                   _StatCard(
@@ -221,7 +221,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 );
               },
-              childCount: state.interactions.length,
+              childCount: filteredInteractions.length,
             ),
           ),
         ],
@@ -230,8 +230,8 @@ class DashboardScreen extends ConsumerWidget {
         onPressed: () => _showStartActionSheet(context),
         label: const Text('New Interaction'),
         icon: const Icon(Icons.add),
-        backgroundColor: AppColors.textPrimary,
-        foregroundColor: AppColors.surface,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
       ),
     );
   }

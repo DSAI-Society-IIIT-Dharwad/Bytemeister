@@ -84,6 +84,7 @@ class MainActivity : FlutterActivity() {
                 "downloadModel" -> handleDownloadModel(result)
                 "startRecognition" -> handleStartRecognition(result)
                 "stopRecognition" -> handleStopRecognition(result)
+                "getSavedAudioPath" -> handleGetSavedAudioPath(result)
                 else -> result.notImplemented()
             }
         }
@@ -182,6 +183,15 @@ class MainActivity : FlutterActivity() {
             result.success(true)
         } catch (e: Exception) {
             result.error("STOP_ERROR", "Failed to stop recognition", e.message)
+        }
+    }
+
+    private fun handleGetSavedAudioPath(result: MethodChannel.Result) {
+        val path = speechService?.lastSavedAudioPath
+        if (path != null) {
+            result.success(path)
+        } else {
+            result.error("NO_AUDIO", "No audio file was saved", null)
         }
     }
 
