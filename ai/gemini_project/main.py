@@ -1,58 +1,100 @@
 import os
 import json
+import time
 import numpy as np
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException, Path
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 from supabase import create_client
 from google import genai
+from google.genai import types 
 from security import encrypt_data, decrypt_data
 from dotenv import load_dotenv
 
-# Load Environment Variables
+# 1. LOAD ENVIRONMENT VARIABLES
 load_dotenv()
 
-app = FastAPI(title="IndicEcho Backend: Secure Multilingual Conversational Platform")
+# 2. CONFIGURATION & SAFETY CHECKS
+GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-# 1. Initialize Clients
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-gemini = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+if not GEMINI_API_KEY:
+    print("CRITICAL ERROR: GOOGLE_API_KEY not found in .env!")
+    exit(1)
 
-# 2. Data Models (The Handshake with Sachi)
+# 3. INITIALIZE APP
+app = FastAPI(title="API")
+
+# CORS allows Kartik (UI) and Sachi (AI) to connect across the network
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 4. INITIALIZE CLIENTS
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+# 5. DATA MODELS
 class IngestData(BaseModel):
-    user_id: str                   # Patient/Client ID (Longitudinal Tracking)
-    raw_transcript: str            # "Person 1: ... Person 2: ..."
+    user_id: str                   
+    raw_transcript: str            
     domain: str                    # 'healthcare' or 'finance'
-    sentiment: str                 # 'positive', 'negative', 'neutral'
-    structured_extraction: Dict[str, Any] # The AI-extracted report
+    sentiment: str                 
+    structured_extraction: Dict[str, Any] 
 
-# 3. API ENDPOINTS
+class UpdateData(BaseModel):
+    """Requirement 3.5: Human validation/correction data model"""
+    corrected_transcript: str
+    corrected_extraction: Dict[str, Any]
 
-@app.get("/")
-async def health_check():
-    return {"status": "Online", "platform": "IndicEcho Innovators"}
+# 6. HELPER FUNCTION: EMBED WITH RETRY
+def get_embedding_with_retry(text: str, max_retries=3):
+    """Handles Gemini API rate limits (429 errors)."""
+    for attempt in range(max_retries):
+        try:
+            res = client.models.embed_content(
+                model="gemini-embedding-2-preview",
+                contents=[text]
+            )
+            return res.embeddings[0].values
+        except Exception as e:
+            if "429" in str(e) and attempt < max_retries - 1:
+                print(f"Rate limit hit. Retrying in 2s... (Attempt {attempt+1})")
+                time.sleep(2)
+                continue
+            else:
+                raise e
 
-@app.post("/process-chat")
+# 7. API ENDPOINTS
+
+@app.get("/", tags=["Multi-Domain System Status"])
+async def system_connectivity_check():
+    """Confirms platform is operational for both Healthcare and Financial sectors."""
+    return {
+        "status": "Online", 
+        "platform": "IndicEcho Innovators",
+        "supported_domains": ["Healthcare (Clinical Scribe)", "Financial Services (Loan/Survey)"],
+        "security": "AES-256 Encrypted",
+        "vector_search": "3072-dim Gemini-2"
+    }
+
+@app.post("/process-chat", tags=["Multi-Domain Ingestion (Health & Finance)"])
 async def process_chat(data: IngestData):
     """
-    Ingestion Layer: 
-    1. Vectorizes the dialogue for search.
-    2. Encrypts sensitive info for DPDP compliance.
-    3. Stores in Supabase.
+    Requirement 3.4 & 4: Ingests conversational data for Health or Finance.
+    Generates 3072-dim vectors, encrypts text, and stores in the cloud.
     """
     try:
-        # A. Generate 3072-dim Embedding (Multimodal space)
-        res = gemini.models.embed_content(
-            model="gemini-embedding-2-preview",
-            contents=[data.raw_transcript]
-        )
-        vector = res.embeddings[0].values
-
-        # B. Privacy Shield: Encrypt Sensitive Fields
+        vector = get_embedding_with_retry(data.raw_transcript)
         enc_transcript = encrypt_data(data.raw_transcript)
         enc_report = encrypt_data(json.dumps(data.structured_extraction))
 
-        # C. Store in Supabase
         db_res = supabase.table("chat_history").insert({
             "user_id": data.user_id,
             "content_encrypted": enc_transcript,
@@ -62,61 +104,68 @@ async def process_chat(data: IngestData):
             "embedding": vector
         }).execute()
 
-        return {"status": "success", "db_id": db_res.data[0]['id'], "user_id": data.user_id}
+        return {"status": "success", "db_id": db_res.data[0]['id']}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/find-history")
-async def find_history(
-    query: str, 
-    user_id: Optional[str] = None, 
-    limit: int = 5
-):
+@app.put("/update-record/{db_id}", tags=["Human Correction Interface"])
+async def update_record(db_id: str, data: UpdateData):
     """
-    Search Layer: Semantic retrieval using Vector Math.
-    Supports global search or user-specific history search.
+    Requirement 3.5: Real-time human modification of AI records.
+    Allows experts to fix transcription or extraction errors.
     """
     try:
-        # A. Embed the Search Query
-        res = gemini.models.embed_content(
-            model="gemini-embedding-2-preview",
-            contents=[query]
-        )
-        q_vec = res.embeddings[0].values
+        new_vector = get_embedding_with_retry(data.corrected_transcript)
+        enc_text = encrypt_data(data.corrected_transcript)
+        enc_report = encrypt_data(json.dumps(data.corrected_extraction))
 
-        # B. Call Supabase Vector Search (RPC)
-        rpc_params = {
+        supabase.table("chat_history").update({
+            "content_encrypted": enc_text,
+            "structured_data_encrypted": enc_report,
+            "embedding": new_vector
+        }).eq("id", db_id).execute()
+
+        return {"status": "success", "message": "Record manually validated and re-indexed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/semantic-search", tags=["Semantic Search Engine"])
+async def semantic_search(query: str, user_id: Optional[str] = None, limit: int = 5):
+    """
+    Requirement 3.6: Multi-sector semantic retrieval. 
+    Searches across Healthcare and Finance logs using meaning-based vector math.
+    """
+    try:
+        q_vec = get_embedding_with_retry(query)
+        rpc_res = supabase.rpc("match_chats", {
             "query_embedding": q_vec,
-            "match_threshold": 0.3,
+            "match_threshold": 0.25,
             "match_count": limit,
-            "filter_user_id": user_id  # Filters by patient if provided
-        }
-        rpc_res = supabase.rpc("match_chats", rpc_params).execute()
+            "filter_user_id": user_id 
+        }).execute()
 
-        # C. Decrypt and Format Results
         results = []
         for item in rpc_res.data:
             results.append({
-                "id": item['id'],
-                "user_id": item['user_id'],
                 "confidence": f"{round(item['similarity'] * 100)}%",
                 "dialogue": decrypt_data(item['content_encrypted']),
                 "report": json.loads(decrypt_data(item['structured_data_encrypted'])),
-                "domain": item['domain']
+                "domain": item['domain'],
+                "user_id": item['user_id'],
+                "db_id": item['id'] 
             })
-
         return {"results": results}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/user-timeline/{user_id}")
+@app.get("/user-timeline/{user_id}", tags=["Longitudinal History"])
 async def get_user_timeline(user_id: str):
     """
-    Longitudinal View: Fetches chronological history for a specific patient.
+    Requirement 3.6 & 7: Tracks historical timeline for a patient or a financial client.
     """
     try:
         res = supabase.table("chat_history") \
-            .select("created_at", "sentiment", "structured_data_encrypted") \
+            .select("id", "created_at", "sentiment", "structured_data_encrypted") \
             .eq("user_id", user_id) \
             .order("created_at", desc=True) \
             .execute()
@@ -125,10 +174,11 @@ async def get_user_timeline(user_id: str):
         for row in res.data:
             report = json.loads(decrypt_data(row['structured_data_encrypted']))
             timeline.append({
+                "db_id": row['id'],
                 "date": row['created_at'],
                 "sentiment": row['sentiment'],
                 "summary": report.get("plain_summary", "No summary provided")
             })
         return {"user_id": user_id, "history": timeline}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
