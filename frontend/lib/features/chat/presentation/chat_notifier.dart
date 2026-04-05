@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_client.dart';
 import '../domain/chat_message.dart';
 
 class ChatState {
@@ -16,7 +17,9 @@ class ChatState {
 }
 
 class ChatNotifier extends StateNotifier<ChatState> {
-  ChatNotifier() : super(ChatState()) {
+  final ApiClient _apiClient;
+
+  ChatNotifier(this._apiClient) : super(ChatState()) {
     _addInitialMessage();
   }
 
@@ -47,12 +50,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
       isThinking: true,
     );
 
-    // Simulate AI response
-    await Future.delayed(const Duration(seconds: 1));
+    // Real AI response from Python backend
+    final aiAnswer = await _apiClient.askAssistant("Rahul", "Dr. Smith", text);
 
     final aiMessage = ChatMessage(
-      text:
-          'I understood that you want to "$text". Could you provide more details?',
+      text: aiAnswer,
       sender: MessageSender.ai,
       timestamp: DateTime.now(),
       suggestions: ['Add Symptoms', 'Confirm Identity', 'Finish Interaction'],
@@ -64,8 +66,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 }
 
-final chatNotifierProvider = StateNotifierProvider<ChatNotifier, ChatState>((
-  ref,
-) {
-  return ChatNotifier();
+final chatNotifierProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return ChatNotifier(apiClient);
 });
