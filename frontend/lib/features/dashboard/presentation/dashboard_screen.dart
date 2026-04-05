@@ -7,6 +7,7 @@ import '../../voice/presentation/voice_screen.dart';
 import '../../chat/presentation/chat_screen.dart';
 import '../domain/interaction.dart';
 import 'dashboard_notifier.dart';
+import 'background_listening_provider.dart';
 import 'interaction_detail_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -29,6 +30,42 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Good Morning, User'),
         actions: [
+          // Background Listening "Tee" Toggle
+          Consumer(
+            builder: (context, ref, child) {
+              final state = ref.watch(backgroundListeningProvider);
+
+              // Surface errors as a SnackBar when they appear
+              ref.listen<BackgroundListeningState>(backgroundListeningProvider,
+                  (prev, next) {
+                if (next.error != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(next.error!),
+                      backgroundColor: Colors.red.shade700,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              });
+
+              return Row(
+                children: [
+                  const Icon(Icons.hearing, size: 20),
+                  const SizedBox(width: 4),
+                  Switch(
+                    value: state.isActive,
+                    onChanged: (val) {
+                      ref
+                          .read(backgroundListeningProvider.notifier)
+                          .toggle(val);
+                    },
+                    activeColor: colorScheme.primary,
+                  ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.analytics_outlined),
             onPressed: () => showModalBottomSheet(
