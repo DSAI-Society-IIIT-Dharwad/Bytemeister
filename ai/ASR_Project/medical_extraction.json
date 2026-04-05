@@ -1,0 +1,15 @@
+{
+  "main_issue": "stomach pain, vomiting, and indigestion after eating pani puri",
+  "symptoms": [
+    "stomach pain",
+    "cough",
+    "vomiting"
+  ],
+  "doctor_advice": "I'll give you some tablets, take them.",
+  "plain_summary": "The patient experienced severe stomach pain, cough, and vomited twice about 2 hours after eating pani puri yesterday. The symptoms persisted even after waking up in the morning, with continued stomach upset and inability to digest food. The patient only managed to drink one cup of tea in the morning. The doctor plans to prescribe tablets.",
+  "trigger_food": "pani puri",
+  "symptom_onset_duration": "2 hours later",
+  "patient_condition_morning": "not better, stomach still upset",
+  "food_digestion_status": "not able to digest food, whatever is eaten is vomited",
+  "consumed_since_symptoms_onset": "one cup of tea"
+}

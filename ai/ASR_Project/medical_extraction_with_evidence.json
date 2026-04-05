@@ -1,0 +1,48 @@
+{
+  "main_issue": {
+    "value": "stomach pain, vomiting, and indigestion after eating pani puri",
+    "evidence": "yesterday I went to eat pani puri, and after that, about 2 hours later, I felt a lot of pain in my stomach, and I also had a cough, and I vomited twice."
+  },
+  "symptoms": [
+    {
+      "value": "stomach pain",
+      "evidence": "I felt a lot of pain in my stomach"
+    },
+    {
+      "value": "cough",
+      "evidence": "I also had a cough"
+    },
+    {
+      "value": "vomiting",
+      "evidence": "I vomited twice"
+    }
+  ],
+  "doctor_advice": {
+    "value": "I'll give you some tablets, take them.",
+    "evidence": "Okay, I'll give you some tablets, take them."
+  },
+  "plain_summary": {
+    "value": "The patient experienced severe stomach pain, cough, and vomited twice about 2 hours after eating pani puri yesterday. The symptoms persisted even after waking up in the morning, with continued stomach upset and inability to digest food. The patient only managed to drink one cup of tea in the morning. The doctor plans to prescribe tablets.",
+    "evidence": ""
+  },
+  "trigger_food": {
+    "value": "pani puri",
+    "evidence": "went to eat pani puri"
+  },
+  "symptom_onset_duration": {
+    "value": "2 hours later",
+    "evidence": "about 2 hours later"
+  },
+  "patient_condition_morning": {
+    "value": "not better, stomach still upset",
+    "evidence": "It's still not better even after waking up in the morning. Wow, my stomach is still upset."
+  },
+  "food_digestion_status": {
+    "value": "not able to digest food, whatever is eaten is vomited",
+    "evidence": "I am not able to digest food. Whatever I eat, I am vomiting."
+  },
+  "consumed_since_symptoms_onset": {
+    "value": "one cup of tea",
+    "evidence": "I could only drink just one cup of tea in the morning"
+  }
+}
