@@ -6,10 +6,8 @@ from datetime import datetime
 HISTORY_BASE_DIR = Path("history")
 HISTORY_BASE_DIR.mkdir(exist_ok=True)
 
-def get_pair_id(patient_name, doctor_name):
-    p = patient_name.strip().replace(" ", "_")
-    d = doctor_name.strip().replace(" ", "_")
-    return f"{p}_{d}"
+def get_pair_id(p1, p2):
+    return f"{p1.strip().replace(' ', '_')}_{p2.strip().replace(' ', '_')}"
 
 def load_pair_history(patient_name, doctor_name):
     pair_id = get_pair_id(patient_name, doctor_name)

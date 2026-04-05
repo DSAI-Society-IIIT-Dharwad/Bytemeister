@@ -1,20 +1,20 @@
 import requests
-import json
+import logging
 
-# Chhavi's Backend Configuration
-BACKEND_URL = "http://10.0.20.98:8000/process-chat"
+log = logging.getLogger("api")
+
+# Use Chhavi's Local IP Address
+CHHAVI_URL = "http://10.0.20.98:8000/process-chat"
 
 def send_data_to_backend(user_id, raw_transcript, ai_result):
     """
-    Maps your AI Specialist output to Chhavi's Backend payload structure.
+    Sends processed AI data to the remote backend.
     """
-    
-    # Mapping your 'extracted_data' to her 'structured_extraction'
     payload = {
         "user_id": user_id,
         "raw_transcript": raw_transcript,
         "domain": ai_result.get("domain_detected", "healthcare"),
-        "sentiment": "neutral", # Default since we removed sentiment analysis
+        "sentiment": "neutral",
         "structured_extraction": {
             "plain_summary": ai_result.get("overall_summary", "No summary provided"),
             "speaker_points": ai_result.get("speaker_summaries", {}),
@@ -23,15 +23,15 @@ def send_data_to_backend(user_id, raw_transcript, ai_result):
     }
 
     try:
-        print(f"[INTEGRATION] 🚀 Sending data to Chhavi's Backend ({BACKEND_URL})...")
-        response = requests.post(BACKEND_URL, json=payload, timeout=10)
+        log.info(f"🚀 Syncing with Chhavi's Backend: {CHHAVI_URL}")
+        response = requests.post(CHHAVI_URL, json=payload, timeout=10)
         
         if response.status_code == 200:
-            print("[INTEGRATION] ✅ Successfully synced with Backend.")
+            log.info("✅ Sync Successful.")
             return response.json()
         else:
-            print(f"[INTEGRATION] ⚠️ Backend returned error {response.status_code}: {response.text}")
+            log.error(f"⚠️ Backend Error: {response.status_code}")
             return None
     except Exception as e:
-        print(f"[INTEGRATION] ❌ Failed to connect to Backend: {e}")
+        log.error(f"❌ Connection to Chhavi failed: {e}")
         return None
