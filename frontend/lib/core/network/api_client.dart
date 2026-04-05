@@ -129,3 +129,131 @@ class ApiClient {
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient();
 });
+
+// ---------------------------------------------------------------------------
+// Memory Layer Client — Secure Semantic Memory Backend
+// Base: http://100.120.18.48:8000
+// Endpoints: /semantic-search, /user-timeline/{id}, /update-record/{id}
+// ---------------------------------------------------------------------------
+
+class MemoryLayerClient {
+  final Dio _dio;
+  static const String _tag = '[MemoryLayer]';
+
+  MemoryLayerClient()
+      : _dio = Dio(
+          BaseOptions(
+            baseUrl: 'http://100.120.18.48:8000',
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 30),
+          ),
+        ) {
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        debugPrint('$_tag ➡️  ${options.method} ${options.uri}');
+        handler.next(options);
+      },
+      onResponse: (response, handler) {
+        debugPrint('$_tag ✅  ${response.statusCode} ${response.requestOptions.path}');
+        debugPrint('$_tag    Body: ${response.data}');
+        handler.next(response);
+      },
+      onError: (err, handler) {
+        debugPrint('$_tag ❌  ${err.type.name}: ${err.message}');
+        handler.next(err);
+      },
+    ));
+  }
+
+  /// GET / — Check if the Memory Layer is online
+  Future<bool> checkStatus() async {
+    try {
+      final response = await _dio.get('/');
+      return response.statusCode == 200 &&
+          (response.data['status'] as String?)?.toLowerCase() == 'online';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// GET /semantic-search?query=...&user_id=...
+  /// Returns a list of matching records
+  Future<List<Map<String, dynamic>>> semanticSearch(
+    String query, {
+    String? userId,
+  }) async {
+    try {
+      final params = <String, dynamic>{'query': query};
+      if (userId != null && userId.isNotEmpty) params['user_id'] = userId;
+
+      final response = await _dio.get('/semantic-search', queryParameters: params);
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is List) {
+          return data.cast<Map<String, dynamic>>();
+        }
+        // Some backends wrap in a results key
+        if (data is Map && data['results'] is List) {
+          return (data['results'] as List).cast<Map<String, dynamic>>();
+        }
+      }
+      return [];
+    } on DioException catch (e) {
+      debugPrint('$_tag semanticSearch error: ${e.message}');
+      return [];
+    }
+  }
+
+  /// GET /user-timeline/{user_id}
+  /// Returns chronological list of visits/interactions
+  Future<List<Map<String, dynamic>>> getUserTimeline(String userId) async {
+    try {
+      final response = await _dio.get('/user-timeline/$userId');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is List) return data.cast<Map<String, dynamic>>();
+        if (data is Map && data['timeline'] is List) {
+          return (data['timeline'] as List).cast<Map<String, dynamic>>();
+        }
+        if (data is Map && data['history'] is List) {
+          return (data['history'] as List).cast<Map<String, dynamic>>();
+        }
+      }
+      return [];
+    } on DioException catch (e) {
+      debugPrint('$_tag getUserTimeline error: ${e.message}');
+      return [];
+    }
+  }
+
+  /// PUT /update-record/{db_id}
+  /// Human correction — submits corrected transcript + extraction
+  Future<bool> updateRecord(
+    String dbId, {
+    required String correctedTranscript,
+    required Map<String, dynamic> correctedExtraction,
+  }) async {
+    try {
+      final response = await _dio.put(
+        '/update-record/$dbId',
+        data: {
+          'corrected_transcript': correctedTranscript,
+          'corrected_extraction': correctedExtraction,
+        },
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      debugPrint('$_tag updateRecord error: ${e.message}');
+      return false;
+    }
+  }
+}
+
+final memoryLayerClientProvider = Provider<MemoryLayerClient>((ref) {
+  return MemoryLayerClient();
+});
+
+/// Convenience provider: polls the Memory Layer status once on first read
+final memoryStatusProvider = FutureProvider<bool>((ref) async {
+  return ref.read(memoryLayerClientProvider).checkStatus();
+});

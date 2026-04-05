@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/network/api_client.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../voice/presentation/voice_screen.dart';
 import '../../chat/presentation/chat_screen.dart';
+import '../../search/presentation/search_screen.dart';
+import '../../timeline/presentation/timeline_screen.dart';
 import '../domain/interaction.dart';
 import 'dashboard_notifier.dart';
 import 'background_listening_provider.dart';
@@ -80,6 +83,19 @@ class DashboardScreen extends ConsumerWidget {
       ),
       body: CustomScrollView(
         slivers: [
+          // Memory Layer status banner
+          SliverToBoxAdapter(
+            child: Consumer(
+              builder: (context, ref, _) {
+                final statusAsync = ref.watch(memoryStatusProvider);
+                return statusAsync.when(
+                  data: (online) => _MemoryStatusBanner(online: online),
+                  loading: () => const _MemoryStatusBanner(online: null),
+                  error: (_, __) => const _MemoryStatusBanner(online: false),
+                );
+              },
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -189,6 +205,13 @@ class DashboardScreen extends ConsumerWidget {
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     onTap: () {
+                      debugPrint('[Dashboard] 👆 Interaction Clicked');
+                      debugPrint('   ID: ${interaction.id}');
+                      debugPrint('   Domain: ${interaction.domainType}');
+                      debugPrint('   Summary: ${interaction.summary}');
+                      debugPrint('   Transcript: ${interaction.transcript}');
+                      debugPrint('   Extracted Details: ${interaction.details}');
+                      
                       if (isHealthcare) {
                         ref.read(themeNotifierProvider.notifier).setHealthcare();
                       } else {
@@ -311,6 +334,40 @@ class DashboardScreen extends ConsumerWidget {
                     MaterialPageRoute(builder: (context) => const ChatScreen()));
               },
             ),
+            const SizedBox(height: 20),
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 8),
+            Text(
+              'MEMORY LAYER',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    letterSpacing: 1.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            _ActionTile(
+              title: 'Semantic Search',
+              subtitle: 'Search records by meaning across domains',
+              icon: Icons.manage_search_rounded,
+              color: const Color(0xFF7C3AED),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => const SearchScreen()));
+              },
+            ),
+            const SizedBox(height: 12),
+            _ActionTile(
+              title: 'Patient Timeline',
+              subtitle: 'Full chronological history for a user',
+              icon: Icons.timeline_rounded,
+              color: const Color(0xFFD97706),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => const TimelineScreen()));
+              },
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -318,6 +375,68 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 }
+
+class _MemoryStatusBanner extends StatelessWidget {
+  final bool? online; // null = loading
+
+  const _MemoryStatusBanner({this.online});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      child: online == null
+          ? const SizedBox.shrink()
+          : Container(
+              key: ValueKey(online),
+              margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: online!
+                    ? AppColors.success.withValues(alpha: 0.08)
+                    : AppColors.error.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: online!
+                      ? AppColors.success.withValues(alpha: 0.25)
+                      : AppColors.error.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: online! ? AppColors.success : AppColors.error,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    online!
+                        ? 'Secure Memory: Online'
+                        : 'Secure Memory: Offline',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: online! ? AppColors.success : AppColors.error,
+                    ),
+                  ),
+                  if (online!) ...[
+                    const SizedBox(width: 6),
+                    Icon(Icons.lock_outline,
+                        size: 12,
+                        color: AppColors.success.withValues(alpha: 0.7)),
+                  ],
+                ],
+              ),
+            ),
+    );
+  }
+}
+
 
 class _StatCard extends StatelessWidget {
   final String label;
