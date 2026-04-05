@@ -165,7 +165,7 @@ async def get_user_timeline(user_id: str):
     """
     try:
         res = supabase.table("chat_history") \
-            .select("id", "created_at", "sentiment", "structured_data_encrypted") \
+            .select("id", "created_at", "sentiment", "domain", "content_encrypted", "structured_data_encrypted") \
             .eq("user_id", user_id) \
             .order("created_at", desc=True) \
             .execute()
@@ -173,11 +173,16 @@ async def get_user_timeline(user_id: str):
         timeline = []
         for row in res.data:
             report = json.loads(decrypt_data(row['structured_data_encrypted']))
+            transcript = decrypt_data(row['content_encrypted']) if row.get('content_encrypted') else "No transcript found"
+            
             timeline.append({
                 "db_id": row['id'],
                 "date": row['created_at'],
                 "sentiment": row['sentiment'],
-                "summary": report.get("plain_summary", "No summary provided")
+                "domain": row['domain'],
+                "transcript": transcript,
+                "domain_fields": report,
+                "summary": report.get("plain_summary", report.get("summary", "No summary provided"))
             })
         return {"user_id": user_id, "history": timeline}
     except Exception as e:
