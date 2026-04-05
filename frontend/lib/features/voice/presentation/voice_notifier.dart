@@ -89,6 +89,7 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
             status: VoiceStatus.idle,
             transcript: summary,
           );
+
         } else {
           state = state.copyWith(
             status: VoiceStatus.idle,

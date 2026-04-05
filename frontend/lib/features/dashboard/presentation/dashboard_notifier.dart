@@ -59,7 +59,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         
         DateTime date;
         try {
-          final timeStr = entry['timestamp'] as String? ?? entry['created_at'] as String?;
+          final timeStr = entry['date'] as String? ?? entry['timestamp'] as String? ?? entry['created_at'] as String?;
           date = timeStr != null ? DateTime.parse(timeStr) : DateTime.now();
         } catch (_) {
           date = DateTime.now();
