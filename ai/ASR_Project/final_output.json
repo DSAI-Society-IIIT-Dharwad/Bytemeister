@@ -1,0 +1,35 @@
+{
+  "call_metadata": {
+    "input_file": "kannada.mp4",
+    "num_chunks": 3,
+    "detected_language_code": "hi-IN"
+  },
+  "raw_transcript": "हाँ डॉक्टर, तो कल मैं पानीपुरी खाने गई थी और उसके बाद से उसके 2 घंटे बाद से मेरे पेट में बहुत दर्द हो रहा है और खांसी भी हो रही है और 2 बार उल्टी भी हो चुकी है और सुबह उठकर भी तबीयत ठीक नहीं हुई है अभी तक पेट।\nखराब है इसीलिए आपको क्या लगता है क्या हुआ है? मतलब अभी आप कुछ भी कंज्यूम कर रहे हो तो सब बाहर आ रहा है कि आप या फिर आप उसको ले पा रहे हो मतलब आर यू एबल टू डाइजेस्ट द फूड और मतलब कम नहीं आई एम नॉट एबल टू डाइजेस्ट द फूड जो भी खाती हूं वो उल्टी हो रही है उसकी इसीलिए अभी बताइए मैं सुबह बस चाय पी सकी दैट्स ऑल\nऔर कुछ नहीं हुआ। ठीक है, मैं आपको कुछ टैबलेट देता हूँ, आप वो लीजिए।",
+  "corrected_transcript": "\"हाँ डॉक्टर, तो कल मैं पानीपुरी खाने गई थी और उसके बाद से उसके 2 घंटे बाद से मेरे पेट में बहुत दर्द हो रहा है और खांसी भी हो रही है और दो बार उल्टी भी हो चुकी है और सुबह उठकर भी तबीयत ठीक नहीं हुई है अभी तक पेट।\nखराब है इसीलिए आपको क्या लगता है क्या हुआ है? मतलब अभी आप कुछ भी खा रहे हो तो सब बाहर आ रहा है कि आप या फिर आप उसको ले पा रहे हो मतलब आर यू एबल टू डाइजेस्ट द फूड और मतलब कम नहीं आई एम नॉट एबल टू डाइजेस्ट द फूड जो भी खाती हूं वो उल्टी हो रही है उसकी इसीलिए अभी बताइए मैं सुबह बस चाय पी सकी दैट्स ऑल\nऔर कुछ नहीं हुआ। ठीक है, मैं आपको कुछ टैबलेट देता हूँ, आप वो लीजिए।\"",
+  "english_transcript": "\"Yes, doctor, I went to eat pani puri yesterday, and since then, 2 hours later, I've been having a lot of pain in my stomach, and I'm also coughing, and I've vomited twice, and even after waking up in the morning, my stomach hasn't gotten any better. It's still bad. What do you think has happened? I mean, whatever I'm eating right now, it's all coming out, either I'm not able to digest the food, or I'm not able to digest the food. Whatever I eat, I'm vomiting. That's why, tell me now, I could only drink tea in the morning. That's all. Nothing else happened. Okay, I'll give you some tablets, take them.\"",
+  "ai_result": {
+    "analysis": {
+      "domain": "Gastroenterology",
+      "subdomain": "Acute Gastroenteritis",
+      "call_type": "Patient Consultation",
+      "main_issue": "Acute gastrointestinal distress"
+    },
+    "fields_used": [
+      "pain",
+      "diarrhea",
+      "cough",
+      "vomiting",
+      "symptoms"
+    ],
+    "extraction": {
+      "time_of_symptom": null,
+      "potential_cause": "food poisoning",
+      "current_condition": "severe stomach pain and vomiting",
+      "medication": [
+        "tablets"
+      ]
+    },
+    "plain_summary": "A patient describes experiencing acute gastrointestinal distress following consumption of pani puri. Symptoms include abdominal pain, vomiting, and cough. They have not experienced any relief from the symptoms."
+  },
+  "warnings": []
+}

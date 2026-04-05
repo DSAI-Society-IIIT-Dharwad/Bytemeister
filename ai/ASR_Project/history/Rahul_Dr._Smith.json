@@ -1,0 +1,38 @@
+{
+  "patient": "Rahul",
+  "doctor": "Dr. Smith",
+  "calls": [
+    {
+      "raw_transcript": "हाँ डॉक्टर, तो कल मैं पानीपुरी खाने गई थी और उसके बाद से उसके 2 घंटे बाद से मेरे पेट में बहुत दर्द हो रहा है और खांसी भी हो रही है और 2 बार उल्टी भी हो चुकी है और सुबह उठकर भी तबीयत ठीक नहीं हुई है अभी तक पेट। खराब है इसीलिए आपको क्या लगता है क्या हुआ है? मतलब अभी आप कुछ भी कंज्यूम कर रहे हो तो सब बाहर आ रहा है कि आप या फिर आप उसको ले पा रहे हो मतलब आर यू एबल टू डाइजेस्ट द फूड और मतलब कम नहीं आई एम नॉट एबल टू डाइजेस्ट द फूड जो भी खाती हूं वो उल्टी हो रही है उसकी इसीलिए अभी बताइए मैं सुबह बस चाय पी सकी दैट्स ऑल और कुछ नहीं हुआ। ठीक है, मैं आपको कुछ टैबलेट देता हूँ, आप वो लीजिए।",
+      "english_transcript": "Yes, doctor, I went to eat pani puri yesterday, and since then, 2 hours later, I've been having a lot of pain in my stomach, and I'm also coughing, and I've vomited twice. Even after waking up in the morning, my stomach hasn't gotten any better. It's still bad. So, what do you think has happened? I mean, whatever I'm consuming right now, it's all coming out, either because of you or because I'm not able to digest the food. And, I mean, I'm not able to digest the food. Whatever I eat, I'm vomiting. That's why, tell me now, I could only drink tea in the morning. That's all, nothing else happened. Okay, I'll give you some tablets, take them.",
+      "speaker_summaries": {
+        "Rahul": [],
+        "Dr. Smith": []
+      },
+      "extracted_data": {
+        "domain_detected": "Error",
+        "speaker_summaries": {
+          "Rahul": [],
+          "Dr. Smith": []
+        },
+        "dynamic_fields": {},
+        "overall_summary": "Error",
+        "missing_info_detective": [],
+        "action_items": {
+          "Rahul": [],
+          "Dr. Smith": []
+        }
+      },
+      "timings": {
+        "1. Load File": "0.16s",
+        "2. ASR (Speech-to-Text)": "2.72s",
+        "3. Translation": "1.16s",
+        "4. AI Gap Analysis": "2.17s",
+        "5. Backend Sync": "0.17s",
+        "Total Pipeline Time": "6.38s"
+      },
+      "sync": "✅ Synced",
+      "timestamp": "2026-04-05 07:30"
+    }
+  ]
+}
